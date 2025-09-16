@@ -47,26 +47,45 @@ function Transactions() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await transactionsAPI.create({
-        ...formData,
-        created_by: user.id
-      });
-      setShowNewForm(false);
-      setFormData({
-        sender_wallet: '',
-        receiver_wallet: '',
-        amount: '',
-        transaction_type: 'transfert',
-        description: ''
-      });
-      fetchData(); // Refresh the list
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-    }
+  const getSenderBalance = () => {
+    const sender = users.concat(clients).find(
+      w => w.wallet_address === formData.sender_wallet
+    );
+    return sender ? parseFloat(sender.wallet_balance) : 0;
   };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  const sender = [...users, ...clients].find(u => u.wallet_address === formData.sender_wallet);
+  if (!sender) {
+    alert("Expéditeur introuvable !");
+    return;
+  }
+
+  if (parseFloat(formData.amount) > parseFloat(sender.wallet_balance)) {
+    alert("Solde insuffisant pour cette transaction !");
+    return;
+  }
+
+  try {
+    await transactionsAPI.create({
+      ...formData,
+      created_by: user.id
+    });
+    setShowNewForm(false);
+    setFormData({
+      sender_wallet: '',
+      receiver_wallet: '',
+      amount: '',
+      transaction_type: 'transfert',
+      description: ''
+    });
+    fetchData(); // Refresh the list
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+  }
+};
+
 
   const handleApprove = async (id) => {
     try {

@@ -60,9 +60,25 @@ export const clientsAPI = {
 // ------------------- TRANSACTIONS -------------------
 export const transactionsAPI = {
   getAll: () => fetchAPI('transactions.php'),
-  create: (transactionData) => fetchAPI('transactions.php', { method: 'POST', body: JSON.stringify(transactionData) }),
-  updateStatus: (id, status, validatedBy) => fetchAPI('transactions.php', { method: 'PUT', body: JSON.stringify({ id, status, validated_by: validatedBy }) }),
-};
+  
+  create: (transactionData) =>
+    fetchAPI('transactions.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transactionData),
+    }),
+  
+  updateStatus: (id, status, validatedBy) =>
+    fetchAPI('transactions.php', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: id,
+        status: status,
+        validated_by: validatedBy, // correspond exactement à ton PHP
+      }),
+    }),
+  }
 
 // ------------------- PRETS -------------------
 export const loansAPI = {

@@ -76,32 +76,42 @@ class Transaction {
         return false;
     }
 
-    public function executeTransaction() {
-        try {
-            $this->conn->beginTransaction();
+  public function executeTransaction() {
+    try {
+        $this->db->beginTransaction();
 
-            // Débiter le portefeuille expéditeur
-            $query = "UPDATE users SET wallet_balance = wallet_balance - :amount 
-                      WHERE wallet_address = :sender_wallet";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":amount", $this->amount);
-            $stmt->bindParam(":sender_wallet", $this->sender_wallet);
-            $stmt->execute();
+        // Récupérer le solde actuel de l'expéditeur
+        $stmt = $this->db->prepare("SELECT wallet_balance FROM users WHERE wallet_address = :wallet
+                                    UNION ALL
+                                    SELECT wallet_balance FROM clients WHERE wallet_address = :wallet");
+        $stmt->execute([':wallet' => $this->sender_wallet]);
+        $sender = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Créditer le portefeuille destinataire
-            $query = "UPDATE users SET wallet_balance = wallet_balance + :amount 
-                      WHERE wallet_address = :receiver_wallet";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":amount", $this->amount);
-            $stmt->bindParam(":receiver_wallet", $this->receiver_wallet);
-            $stmt->execute();
-
-            $this->conn->commit();
-            return true;
-        } catch (Exception $e) {
-            $this->conn->rollBack();
-            return false;
+        if (!$sender || $sender['wallet_balance'] < $this->amount) {
+            $this->db->rollBack();
+            return false; // Solde insuffisant
         }
+
+        // Débiter l'expéditeur
+        $stmt = $this->db->prepare("UPDATE users SET wallet_balance = wallet_balance - :amount WHERE wallet_address = :wallet
+                                    UNION ALL
+                                    UPDATE clients SET wallet_balance = wallet_balance - :amount WHERE wallet_address = :wallet");
+        $stmt->execute([':amount' => $this->amount, ':wallet' => $this->sender_wallet]);
+
+        // Créditer le destinataire
+        $stmt = $this->db->prepare("UPDATE users SET wallet_balance = wallet_balance + :amount WHERE wallet_address = :wallet
+                                    UNION ALL
+                                    UPDATE clients SET wallet_balance = wallet_balance + :amount WHERE wallet_address = :wallet");
+        $stmt->execute([':amount' => $this->amount, ':wallet' => $this->receiver_wallet]);
+
+        $this->db->commit();
+        return true;
+
+    } catch (Exception $e) {
+        $this->db->rollBack();
+        return false;
     }
+}
+
 }
 ?>
