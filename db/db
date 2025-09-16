@@ -1,0 +1,287 @@
+-- Suppression des tables existantes
+DROP TABLE IF EXISTS repayments;
+DROP TABLE IF EXISTS loans;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS agency_settings;
+DROP TABLE IF EXISTS activity_logs;
+DROP TABLE IF EXISTS document_generation_history;
+DROP TABLE IF EXISTS document_templates;
+DROP TABLE IF EXISTS electronic_signatures;
+-- Création de la base de données
+CREATE DATABASE microcredit_db;
+-- Suppression des tables existantes
+DROP TABLE IF EXISTS repayments;
+DROP TABLE IF EXISTS loans;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS notifications;
+USE microcredit_db;
+
+-- Table des utilisateurs (admin, caissier, agent, chef d'opération)
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    role ENUM('admin', 'caissier', 'agent', 'chef_operation') NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    photo VARCHAR(255) DEFAULT NULL,
+    wallet_address VARCHAR(100) UNIQUE NOT NULL,
+    wallet_balance DECIMAL(15,2) DEFAULT 0.00,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Table des clients
+CREATE TABLE clients (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    address TEXT NOT NULL,
+    photo VARCHAR(255) DEFAULT NULL,
+    id_number VARCHAR(50) UNIQUE NOT NULL,
+    wallet_address VARCHAR(100) UNIQUE NOT NULL,
+    wallet_balance DECIMAL(15,2) DEFAULT 0.00,
+    status ENUM('active', 'inactive', 'pending') DEFAULT 'pending',
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Table des transactions
+CREATE TABLE transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    transaction_ref VARCHAR(100) UNIQUE NOT NULL,
+    sender_wallet VARCHAR(100) NOT NULL,
+    receiver_wallet VARCHAR(100) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    transaction_type ENUM('transfert', 'remboursement', 'depot', 'credit', 'frais') NOT NULL,
+    description TEXT,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    validated_by INT DEFAULT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (validated_by) REFERENCES users(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Table des prêts
+CREATE TABLE loans (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    client_id INT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    interest_rate DECIMAL(5,2) NOT NULL,
+    total_amount DECIMAL(15,2) NOT NULL,
+    duration INT NOT NULL, -- en jours
+    status ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
+    approved_by INT DEFAULT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(id),
+    FOREIGN KEY (approved_by) REFERENCES users(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Table pour enregistrer les remboursements
+CREATE TABLE repayments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    loan_id INT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL COMMENT 'Montant du principal remboursé',
+    interest_amount DECIMAL(15,2) NOT NULL COMMENT 'Montant des intérêts payés',
+    remaining_balance DECIMAL(15,2) NOT NULL COMMENT 'Solde restant du principal',
+    transaction_id INT NOT NULL COMMENT 'Référence à la transaction de remboursement',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+);
+
+-- Table pour les paramètres de l'agence
+CREATE TABLE agency_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    logo VARCHAR(255),
+    currency VARCHAR(10) DEFAULT 'XOF',
+    interest_rate_min DECIMAL(5,2) DEFAULT 1.00,
+    interest_rate_max DECIMAL(5,2) DEFAULT 20.00,
+    transaction_fee DECIMAL(5,2) DEFAULT 0.00,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insertion des paramètres par défaut
+INSERT INTO agency_settings (name, address, phone, email) VALUES
+('CMC-ATDR', 'Adresse de l\'agence', '+225 00 00 00 00', 'contact@cmc-atdr.com');
+
+-- Table pour l'historique des activités
+CREATE TABLE activity_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    description TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Insertion de quelques logs d'activité
+INSERT INTO activity_logs (user_id, action, description) VALUES
+(1, 'CONNEXION', 'Administrateur connecté au système'),
+(2, 'TRANSACTION', 'Nouvelle transaction créée: TRANS-001'),
+(3, 'CLIENT', 'Nouveau client enregistré: Jean Dupont');
+
+-- Table pour les paramètres de l'agence
+CREATE TABLE agency_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    logo VARCHAR(255),
+    currency VARCHAR(10) DEFAULT 'XOF',
+    interest_rate_min DECIMAL(5,2) DEFAULT 1.00,
+    interest_rate_max DECIMAL(5,2) DEFAULT 20.00,
+    transaction_fee DECIMAL(5,2) DEFAULT 0.00,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+-- Table pour l'historique des activités
+CREATE TABLE activity_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    description TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+-- Table pour l'historique des générations de documents
+CREATE TABLE document_generation_history (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    client_id INT NOT NULL,
+    document_type ENUM('receipt', 'id_card', 'contract', 'certificate') NOT NULL,
+    generated_by INT NOT NULL,
+    generation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    document_path VARCHAR(255),
+    notes TEXT,
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (generated_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Table des modèles de documents
+CREATE TABLE document_templates (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    type ENUM('receipt', 'id_card', 'contract', 'certificate') NOT NULL,
+    content TEXT NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('info', 'warning', 'success', 'danger') DEFAULT 'info',
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+-- Table des signatures électroniques
+CREATE TABLE electronic_signatures (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    signature_image VARCHAR(255),
+    signature_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active TINYINT(1) DEFAULT 1,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+-- Insertion de modèles par défaut
+INSERT INTO document_templates (name, type, content, created_by) VALUES
+('Reçu d''Identification Standard', 'receipt', 'Contenu du modèle de reçu...', 1),
+('Carte d''Identification Standard', 'id_card', 'Contenu du modèle de carte...', 1),
+('Contrat de Prêt Standard', 'contract', 'Contenu du modèle de contrat...', 1),
+('Certificat de Solvabilité Standard', 'certificate', 'Contenu du modèle de certificat...', 1);
+-- Insertion de quelques logs d'activité
+INSERT INTO activity_logs (user_id, action, description) VALUES
+(1, 'CONNEXION', 'Administrateur connecté au système'),
+(2, 'TRANSACTION', 'Nouvelle transaction créée: TRANS-001'),
+(3, 'CLIENT', 'Nouveau client enregistré: Jean Dupont');
+-- Table des notifications
+
+
+-- Insertion de quelques notifications de test
+INSERT INTO notifications (user_id, message, type) VALUES
+(1, 'Bienvenue dans le système de gestion CMC-ATDR', 'info'),
+(2, 'Votre compte caissier a été activé avec succès', 'success'),
+(3, 'Nouveau client en attente de validation', 'warning'),
+(4, 'Transaction de 50,000 XOF en attente de validation', 'warning');
+
+-- Insertion des données initiales
+INSERT INTO users (username, password, email, role, first_name, last_name, wallet_address, wallet_balance) 
+VALUES 
+('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@cmc-atdr.com', 'admin', 'Admin', 'Principal', 'admin_wallet_001', 1000000000.00),
+('caissier1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'caissier1@cmc-atdr.com', 'caissier', 'Jean', 'Dupont', 'caissier_wallet_001', 0.00),
+('agent1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'agent1@cmc-atdr.com', 'agent', 'Marie', 'Martin', 'agent_wallet_001', 0.00),
+('chef1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'chef@cmc-atdr.com', 'chef_operation', 'Pierre', 'Durand', 'chef_wallet_001', 0.00);
+
+INSERT INTO notifications (user_id, message, type)
+VALUES
+(1, 'Bienvenue dans le système de gestion CMC-ATDR', 'info'),
+(2, 'Votre compte caissier a été activé', 'success'),
+(3, 'Un nouveau client est en attente de validation', 'warning');
+
+INSERT INTO activity_logs (user_id, action, description)
+VALUES
+(1, 'CONNEXION', 'Administrateur connecté au système'),
+(2, 'TRANSACTION', 'Nouvelle transaction créée: TRANS-001'),
+(3, 'CLIENT', 'Nouveau client enregistré: Jean Dupont');
+
+
+INSERT INTO repayments (loan_id, amount, interest_amount, remaining_balance, transaction_id)
+VALUES
+(1, 50000.00, 2500.00, 55000.00, 1),
+(1, 55000.00, 2750.00, 0.00, 3),
+(2, 20000.00, 900.00, 32250.00, 2);
+
+INSERT INTO loans (client_id, amount, interest_rate, total_amount, duration, status, approved_by, created_by)
+VALUES
+(1, 100000.00, 5.0, 105000.00, 30, 'approved', 1, 1),
+(2, 50000.00, 4.5, 52250.00, 60, 'pending', NULL, 2),
+(3, 200000.00, 6.0, 212000.00, 90, 'rejected', 1, 1);
+
+INSERT INTO clients (first_name, last_name, email, phone, address, id_number, wallet_address, wallet_balance, status, created_by)
+VALUES
+('Jean', 'Dupont', 'jean.dupont@example.com', '+225 01 23 45 67', 'Abidjan, Côte d\'Ivoire', 'ID001', 'client_wallet_001', 50000.00, 'active', 1),
+('Marie', 'Martin', 'marie.martin@example.com', '+225 01 23 45 68', 'Yamoussoukro, Côte d\'Ivoire', 'ID002', 'client_wallet_002', 75000.00, 'active', 1),
+('Paul', 'Ngoma', 'paul.ngoma@example.com', '+225 01 23 45 69', 'Bouaké, Côte d\'Ivoire', 'ID003', 'client_wallet_003', 0.00, 'pending', 2);
+
+INSERT INTO transactions (transaction_ref, sender_wallet, receiver_wallet, amount, transaction_type, description, status, created_by)
+VALUES
+('TRANS-001', 'client_wallet_001', 'client_wallet_002', 10000.00, 'transfert', 'Transfert de Jean à Marie', 'approved', 1),
+('TRANS-002', 'client_wallet_002', 'client_wallet_003', 5000.00, 'transfert', 'Transfert de Marie à Paul', 'pending', 2),
+('TRANS-003', 'client_wallet_001', 'caissier_wallet_001', 20000.00, 'depot', 'Dépôt au guichet', 'approved', 1);
+
+-- Insertion des paramètres par défaut
+INSERT INTO agency_settings (name, address, phone, email) 
+VALUES('CMC-ATDR', 'Adresse de l\'agence', '+225 00 00 00 00', 'contact@cmc-atdr.com');
